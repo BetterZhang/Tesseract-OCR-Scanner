@@ -24,7 +24,6 @@ import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.Switch;
 import android.widget.Toast;
-
 import com.google.zxing.Result;
 import com.zl.tesseract.R;
 import com.zl.tesseract.scanner.camera.CameraManager;
@@ -41,12 +40,10 @@ import com.zl.tesseract.scanner.utils.MailAnalyzer;
 import com.zl.tesseract.scanner.utils.Tools;
 import com.zl.tesseract.scanner.view.ImageDialog;
 import com.zl.tesseract.scanner.view.ScannerFinderView;
-
 import java.io.IOException;
 import java.net.ConnectException;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
-
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.RequestBody;
@@ -317,6 +314,7 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
 
                 if (strs.size() == 0) {
 //                    tv_orgin_result.setText("识别结果为空");
+                    qrSucceed("识别结果为空");
                     return;
                 }
 
@@ -330,8 +328,10 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
                 Log.d(TAG, result.toString());
                 if (result.getCode() == 200) {
 //                    tv_result.setText(result.toString());
+                    qrSucceed(result.toString());
                 } else if (result.getCode() == 500) {
 //                    tv_result.setText("识别结果为空");
+                    qrSucceed("识别结果为空");
                 }
             }
 
