@@ -13,6 +13,7 @@ import android.os.Handler;
 import android.os.Message;
 import android.os.Vibrator;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceHolder.Callback;
 import android.view.SurfaceView;
@@ -30,18 +31,45 @@ import com.zl.tesseract.scanner.camera.CameraManager;
 import com.zl.tesseract.scanner.decode.CaptureActivityHandler;
 import com.zl.tesseract.scanner.decode.DecodeManager;
 import com.zl.tesseract.scanner.decode.InactivityTimer;
+import com.zl.tesseract.scanner.domain.MailAnalysisResult;
+import com.zl.tesseract.scanner.domain.ResponseBody;
+import com.zl.tesseract.scanner.service.AppService;
 import com.zl.tesseract.scanner.tess.TesseractCallback;
 import com.zl.tesseract.scanner.tess.TesseractThread;
+import com.zl.tesseract.scanner.utils.BitmapUtil;
+import com.zl.tesseract.scanner.utils.MailAnalyzer;
 import com.zl.tesseract.scanner.utils.Tools;
 import com.zl.tesseract.scanner.view.ImageDialog;
 import com.zl.tesseract.scanner.view.ScannerFinderView;
 
 import java.io.IOException;
+import java.net.ConnectException;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.RequestBody;
+import okhttp3.logging.HttpLoggingInterceptor;
+import retrofit2.Call;
+import retrofit2.Response;
+import retrofit2.Retrofit;
+import retrofit2.converter.gson.GsonConverterFactory;
 
 /**
  * 二维码扫描类。
  */
 public class ScannerActivity extends Activity implements Callback, Camera.PictureCallback, Camera.ShutterCallback{
+
+    private static final String TAG = "ScannerActivity";
+
+    private static final int CONNECT_TIMEOUT = 30;
+    private static final int WRITE_TIMEOUT = 20;
+    private static final int READ_TIMEOUT = 20;
+
+    Retrofit retrofit = null;
+    AppService service = null;
+    Call<ResponseBody> response = null;
 
     private CaptureActivityHandler mCaptureActivityHandler;
     private boolean mHasSurface;
@@ -62,6 +90,27 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         setContentView(R.layout.activity_scanner);
         initView();
         initData();
+        initRetrofit();
+    }
+
+    private void initRetrofit() {
+        HttpLoggingInterceptor interceptor = new HttpLoggingInterceptor();
+        interceptor.setLevel(HttpLoggingInterceptor.Level.BODY);
+        OkHttpClient client = new OkHttpClient.Builder()
+                .addInterceptor(interceptor)
+                .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
+                .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
+                .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build();
+
+        retrofit = new Retrofit.Builder()
+                .baseUrl("https://imgs-sandbox.intsig.net")
+                .client(client)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build();
+
+        service = retrofit.create(AppService.class);
     }
 
     private void initView() {
@@ -231,12 +280,73 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         } else {
             Vibrator vibrator = (Vibrator) this.getSystemService(Context.VIBRATOR_SERVICE);
             vibrator.vibrate(200L);
-            if (switch1.isChecked()) {
-                qrSucceed(result.getText());
-            } else {
-                phoneSucceed(result.getText(), result.getBitmap());
-            }
+
+            Log.e("aaa", result.getBitmap() == null ? "true" : "false");
+
+            if (result.getBitmap() != null)
+                loadData(result.getBitmap());
+//            if (switch1.isChecked()) {
+//                qrSucceed(result.getText());
+//            } else {
+//                phoneSucceed(result.getText(), result.getBitmap());
+//            }
+
         }
+    }
+
+    private void loadData(Bitmap bitmap) {
+        RequestBody body = null;
+        try {
+            body = RequestBody.create(MediaType.parse("multipart/form-data"), BitmapUtil.bitmap2Bytes(bitmap));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        try {
+            response = service.scanner("qymgc", "XNs44IV5LZsI", body);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        response.enqueue(new retrofit2.Callback<ResponseBody>() {
+            @Override
+            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
+                if (response == null || response.body() == null)
+                    return;
+                Log.d(TAG, response.body().toString());
+                List<String> strs = response.body().getLinesText();
+
+                if (strs.size() == 0) {
+//                    tv_orgin_result.setText("识别结果为空");
+                    return;
+                }
+
+                StringBuilder stringBuilder = new StringBuilder();
+                for (int i = 0; i < strs.size(); i++) {
+                    stringBuilder.append(strs.get(i) + "\n");
+                }
+//                tv_orgin_result.setText(stringBuilder.toString());
+
+                MailAnalysisResult result = MailAnalyzer.doMailAnalysis(strs);
+                Log.d(TAG, result.toString());
+                if (result.getCode() == 200) {
+//                    tv_result.setText(result.toString());
+                } else if (result.getCode() == 500) {
+//                    tv_result.setText("识别结果为空");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<ResponseBody> call, Throwable t) {
+                final Throwable cause = t.getCause() != null ? t.getCause() : t;
+                if (cause != null) {
+                    if (cause instanceof ConnectException) {
+                        Toast.makeText(ScannerActivity.this, "未能连接到服务器", Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(ScannerActivity.this, "连接超时，请稍后重试", Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
     }
 
     @Override
