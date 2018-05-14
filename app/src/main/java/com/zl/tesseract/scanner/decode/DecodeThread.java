@@ -46,7 +46,7 @@ final class DecodeThread extends Thread {
     @Override
     public void run() {
         Looper.prepare();
-        mHandler = new DecodeHandler(mActivity);
+        mHandler = new DecodeHandler(mActivity, true, true);
         mHandlerInitLatch.countDown();
         Looper.loop();
     }

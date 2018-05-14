@@ -29,7 +29,7 @@ public class MailAnalyzer {
         boolean isNameOk = false;
         boolean isPhoneOk = false;
         boolean isMailNoOk = false;
-        // 解析姓名和快递号
+        // 解析姓名和手机号
         String[] nameAndPhoneStr = getNameAndPhone(ocrResult);
         if (null == nameAndPhoneStr) {
             isNameOk = false;
@@ -41,15 +41,15 @@ public class MailAnalyzer {
             isPhoneOk = true;
         }
 
-        // 解析运单号
-        String mailNoStr = getMailNo(ocrResult);
-        if (null != mailNoStr) {
-            result.setMailNo(mailNoStr);
-            isMailNoOk = true;
-        }
-        if (!isMailNoOk && !isNameOk && !isPhoneOk) {
-            result.setCode(MailAnalysisResult.ERROR);
-        }
+//        // 解析运单号
+//        String mailNoStr = getMailNo(ocrResult);
+//        if (null != mailNoStr) {
+//            result.setMailNo(mailNoStr);
+//            isMailNoOk = true;
+//        }
+//        if (!isMailNoOk && !isNameOk && !isPhoneOk) {
+//            result.setCode(MailAnalysisResult.ERROR);
+//        }
         return result;
     }
 

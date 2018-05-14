@@ -75,11 +75,12 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
     private SurfaceView mSurfaceView;
     private ViewStub mSurfaceViewStub;
     private DecodeManager mDecodeManager = new DecodeManager();
-    private Switch switch1;
-    private Button bt;
+//    private Switch switch1;
+//    private Button bt;
 
     private ProgressDialog progressDialog;
     private Bitmap bmp;
+    private Bitmap allBmp;
     @Override
     public void onCreate(Bundle savedInstanceState) {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
@@ -113,19 +114,19 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
     private void initView() {
         mQrCodeFinderView = (ScannerFinderView) findViewById(R.id.qr_code_view_finder);
         mSurfaceViewStub = (ViewStub) findViewById(R.id.qr_code_view_stub);
-        switch1 = (Switch) findViewById(R.id.switch1);
+//        switch1 = (Switch) findViewById(R.id.switch1);
         mHasSurface = false;
 
-        bt = (Button) findViewById(R.id.bt);
-
-        bt.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                bt.setEnabled(false);
-                buildProgressDialog();
-                CameraManager.get().takeShot(ScannerActivity.this, ScannerActivity.this, ScannerActivity.this);
-            }
-        });
+//        bt = (Button) findViewById(R.id.bt);
+//
+//        bt.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                bt.setEnabled(false);
+//                buildProgressDialog();
+//                CameraManager.get().takeShot(ScannerActivity.this, ScannerActivity.this, ScannerActivity.this);
+//            }
+//        });
 
         Switch switch2 = (Switch) findViewById(R.id.switch2);
         switch2.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -140,8 +141,13 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         return mQrCodeFinderView.getRect();
     }
 
+    public Rect getAllRect() {
+        return mQrCodeFinderView.getAllRect();
+    }
+
     public boolean isQRCode() {
-        return switch1.isChecked();
+//        return switch1.isChecked();
+        return false;
     }
 
     private void initData() {
@@ -267,6 +273,7 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
     }
 
     private void handleResult(Result result) {
+        String[] moAndMa = null;
         if (TextUtils.isEmpty(result.getText())) {
             mDecodeManager.showCouldNotReadQrCodeFromScanner(this, new DecodeManager.OnRefreshCameraListener() {
                 @Override
@@ -281,7 +288,7 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
             Log.e("aaa", result.getBitmap() == null ? "true" : "false");
 
             if (result.getBitmap() != null)
-                loadData(result.getBitmap());
+                loadData(result.getMailNoStr(), result.getMobileNoStr(), result.getBitmap());
 //            if (switch1.isChecked()) {
 //                qrSucceed(result.getText());
 //            } else {
@@ -291,7 +298,8 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         }
     }
 
-    private void loadData(Bitmap bitmap) {
+    private void loadData(final String mailNo, final String mobileNo, Bitmap bitmap) {
+//        qrSucceed(mobileNo + "###" +  mailNo);
         RequestBody body = null;
         try {
             body = RequestBody.create(MediaType.parse("multipart/form-data"), BitmapUtil.bitmap2Bytes(bitmap));
@@ -325,13 +333,16 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
 //                tv_orgin_result.setText(stringBuilder.toString());
 
                 MailAnalysisResult result = MailAnalyzer.doMailAnalysis(strs);
+
                 Log.d(TAG, result.toString());
                 if (result.getCode() == 200) {
+                    result.setMailNo(mailNo);
+//                    result.setRecipientPhone(mobileNo);
 //                    tv_result.setText(result.toString());
                     qrSucceed(result.toString());
                 } else if (result.getCode() == 500) {
 //                    tv_result.setText("识别结果为空");
-                    qrSucceed("识别结果为空");
+                    qrSucceed("解析失败");
                 }
             }
 
@@ -357,7 +368,7 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         mCaptureActivityHandler.onPause();
         bmp = null;
         bmp = Tools.getFocusedBitmap(this, camera, data, getCropRect());
-
+        allBmp = Tools.getFocusedBitmap(this, camera, data, getAllRect());
         TesseractThread mTesseractThread = new TesseractThread(bmp, new TesseractCallback() {
 
             @Override
@@ -420,7 +431,7 @@ public class ScannerActivity extends Activity implements Callback, Camera.Pictur
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            bt.setEnabled(true);
+//            bt.setEnabled(true);
             cancelProgressDialog();
             switch (msg.what){
                 case 0:

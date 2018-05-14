@@ -13,8 +13,10 @@
 
 package com.zl.tesseract.scanner.decode;
 
+import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Message;
+import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.zxing.Result;
@@ -31,6 +33,9 @@ public final class CaptureActivityHandler extends Handler {
     private final ScannerActivity mActivity;
     private final DecodeThread mDecodeThread;
     private State mState;
+    private String mailNo;
+    private String mobileNo;
+    private Bitmap mobileAndNamePic;
 
     public CaptureActivityHandler(ScannerActivity activity) {
         this.mActivity = activity;
@@ -54,8 +59,33 @@ public final class CaptureActivityHandler extends Handler {
                 break;
             case R.id.decode_succeeded:
                 Log.e(TAG, "Got decode succeeded message");
-                mState = State.SUCCESS;
-                mActivity.handleDecode((Result) message.obj);
+                Result tmpRslt = (Result) message.obj;
+                if (TextUtils.isEmpty(this.mobileNo) && !TextUtils.isEmpty(tmpRslt.getMobileNoStr())) {
+                    this.mobileNo = tmpRslt.getMobileNoStr();
+                }
+                if (null == mobileAndNamePic) {
+                    mobileAndNamePic = tmpRslt.getBitmap();
+                }
+                if (TextUtils.isEmpty(this.mailNo) && !TextUtils.isEmpty(tmpRslt.getMailNoStr())) {
+                    this.mailNo = tmpRslt.getMailNoStr();
+                }
+                if (!TextUtils.isEmpty(this.mailNo)
+                        && !TextUtils.isEmpty(this.mailNo)
+                        && null != mobileAndNamePic) {
+                    mState = State.SUCCESS;
+                    Result ret = new Result(this.mailNo + "#" + this.mobileNo, null, null, null);
+                    ret.setMailNoStr(this.mailNo);
+                    ret.setMobileNoStr(this.mobileNo);
+                    ret.setBitmap(this.mobileAndNamePic);
+                    this.mobileAndNamePic = null;
+                    this.mailNo = null;
+                    this.mobileNo = null;
+                    mActivity.handleDecode(ret);
+                } else {
+                    mState = State.PREVIEW;
+                    CameraManager.get().requestPreviewFrame(mDecodeThread.getHandler(), R.id.decode);
+                }
+//                mActivity.handleDecode((Result) message.obj);
                 break;
             case R.id.decode_failed:
                 // We're decoding as fast as possible, so when one decode fails, start another.

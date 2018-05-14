@@ -90,7 +90,7 @@ public class TessDataManager {
 
         try {
             InputStream fileInputStream = context.getResources()
-                    .openRawResource(R.raw.eng_traineddata);
+                    .openRawResource(R.raw.eng);
 
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
